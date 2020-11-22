@@ -6,11 +6,13 @@
 #include "../include/loss.h"
 
 
-using namespace torch;
-using namespace std;
-namespace DT = data::transforms;
+namespace metric{
 
-loss::arcMarginImpl::arcMarginImpl(int64_t N, int64_t M, float s, float m, bool easy_margin) : N(N),M(M),s(s),m(m),easy_margin(easy_margin),fc(torch::nn::LinearOptions(N,M).with_bias(false))
+    using namespace torch;
+    using namespace std;
+    namespace DT = data::transforms;
+
+    arcMarginImpl::arcMarginImpl(int64_t N, int64_t M, float s, float m, bool easy_margin) : N(N),M(M),s(s),m(m),easy_margin(easy_margin),fc(torch::nn::LinearOptions(N,M).with_bias(false))
     {
        register_module("fc",fc);
        Tensor weight = register_parameter( "weight", torch::ones((N, M), torch::TensorOptions(torch::kFloat16).requires_grad(true)) );
@@ -18,20 +20,20 @@ loss::arcMarginImpl::arcMarginImpl(int64_t N, int64_t M, float s, float m, bool 
 
        float cos_m = cos(m);
        float sin_m = sin(m);
-       float cos_comp = cos(M_PIl - m);
-       float mm = sin(M_1_PIl - m)*m;
+       float cos_comp = cos(M_PIl - m); //cos(pi-m) = -cos(m)
+       float mm = sin(M_1_PIl - m)*m; //cos'(m)
     }
 
 
-torch::Tensor loss::arcMarginImpl::forward(const Tensor& input, const Tensor& label)
+    torch::Tensor loss::arcMarginImpl::forward(const Tensor& input, const Tensor& label)
     {
        
         auto norm_in = ( input - input.mean() ) / input.std();
         auto norm_w = ( weight - weight.mean() ) / weight.std();
         
-        auto cosine =  fc->forward(norm_in.view({norm_in.size(0),this->N}));
+        auto cosine =  fc->forward(norm_in.view({norm_in.size(0),this->N})); //cos(b)
         auto sine = torch::sqrt( (1.0 - at::pow(cosine, 2)) );
-        auto phi = cosine * cos_m - sine * sin_m;
+        auto phi = cosine * cos_m - sine * sin_m; //cos(a+b)
 
         if(easy_margin){
             phi = at::where(cosine>0, phi, cosine);
@@ -45,3 +47,6 @@ torch::Tensor loss::arcMarginImpl::forward(const Tensor& input, const Tensor& la
         
         return output;
     }
+
+}
+

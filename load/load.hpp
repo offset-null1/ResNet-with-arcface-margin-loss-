@@ -4,37 +4,40 @@
 #include <opencv2/core.hpp>
 #include <opencv2/hdf.hpp>
 #include <torch/torch.h>
+#include <torch/data/datasets/base.h>
+#include <tuple>
+#include <array>
 
 #ifdef __cplusplus
 extern "C"{
 #endif // __cplusplus
 
     namespace loader{
-        cv::Mat load_HDF5(std::string&& file_name, const std::string& parent_name, const std::string& dataset_name);
-        torch::Tensor data_toTensor(cv::Mat&& data);
-        torch::Tensor label_toTensor(cv::Mat&& data);
+        cv::Mat load_HDF5(std::string&& path, std::string&& delimiter);
+        torch::Tensor data_toTensor(std::string&& dataset_path);
+        torch::Tensor label_toTensor(std::string&& dataset_path);
 
-        class loadDataset : public torch::data::dataset<loadDataset> {
+        class loadDataset : public torch::data::datasets::Dataset<loadDataset, torch::Tensor> {
 
             private:
-                torch::Tensor images, labels;
+                torch::Tensor data, labels;
 
             public:
-                loadDataset(std::string&& file_name, const std::string& parent_name, const std::string& image_dataset, const std::string& label_dataset) {
+                loadDataset(std::string&& dataset_path, std::string&& label_path, size_t batch_size) {
 
-                   images = loader::data_toTensor(std::string&& file_name, const std::string& parent_name, const std::string& image_dataset);
-                   labels = loader::label_toTensor(std::string&& file_name, const std::string& parent_name, const std::string& label_dataset);
+                   data = data_toTensor(std::move(dataset_path));
+                   labels = label_toTensor(std::move(label_path));
 
                 }
 
-                torch::dataset::Example<> get(size_t index) override {
-
-                    return { images.at(index).clone(), labels.at(index).clone() };
+                std::tuple<torch::Tensor, torch::Tensor> get_(size_t index)  {
+                    
+                    return { data[index], labels[index]};
                 }
 
-                torch::optional<size_t> size() const override {
-                    return labels.size();
-                }
+                //  optional<size_t> size() const override {
+                //   return data.size();
+                // }
 
         };
     } 

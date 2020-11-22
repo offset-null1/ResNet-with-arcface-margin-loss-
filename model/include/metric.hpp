@@ -1,5 +1,5 @@
-#ifndef __LOSS__
-#define __LOSS__
+#ifndef __METRIC__
+#define __METRIC__
 #include <torch/torch.h>
 
 #ifdef __cplusplus
@@ -44,4 +44,4 @@ namespace loss{
 }
 #endif // __cplusplus
 
-#endif // !__LOSS__
+#endif // !__METRIC__
